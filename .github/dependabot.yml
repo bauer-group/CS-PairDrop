@@ -1,0 +1,22 @@
+# =============================================================================
+# Dependabot Configuration
+# =============================================================================
+# Monitors GitHub Actions for updates on a weekly basis.
+# =============================================================================
+
+version: 2
+updates:
+  # GitHub Actions updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:30"
+      timezone: "Etc/UTC"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "dependabot"
+    commit-message:
+      prefix: "chore(ci)"

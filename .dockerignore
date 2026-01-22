@@ -1,0 +1,53 @@
+# ═══════════════════════════════════════════════════════════
+# PairDrop - Docker Build Ignore
+# BAUER GROUP | CS-PairDrop
+# ═══════════════════════════════════════════════════════════
+# Files excluded from Docker build context
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment (may contain secrets)
+.env
+.env.*
+!.env.example
+
+# Documentation
+*.md
+LICENSE
+NOTICE
+CONCEPT.md
+
+# Docker Compose files (not needed in image)
+docker-compose*.yml
+
+# IDE
+.vscode/
+.idea/
+.claude/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Certificates (volume mounted, not baked)
+certs/
+*.pem
+*.crt
+*.key
+
+# GitHub workflows (not needed in image)
+.github/

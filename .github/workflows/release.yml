@@ -1,0 +1,86 @@
+name: 🚀 Release
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.github/**'
+      - '*.md'
+      - 'docs/**'
+      - 'CONCEPT.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'docker-compose*.yml'
+      - '.dockerignore'
+  workflow_dispatch:
+    inputs:
+      force-release:
+        description: 'force create release'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  # ============================================
+  # Validation Jobs
+  # ============================================
+
+  validate-compose:
+    name: 🔍 Validate Docker Compose
+    uses: bauer-group/automation-templates/.github/workflows/modules-validate-compose.yml@main
+    with:
+      compose-files: '["docker-compose.coolify.yml", "docker-compose.traefik.yml", "docker-compose.development.yml"]'
+      env-template: |
+        {
+          "STACK_NAME": "pairdrop_ci_test",
+          "TIME_ZONE": "Etc/UTC",
+          "PUID": "1000",
+          "PGID": "1000",
+          "PAIRDROP_HOSTNAME": "drop.example.com",
+          "PAIRDROP_PORT": "3000",
+          "WS_FALLBACK": "true",
+          "RATE_LIMIT": "1",
+          "DEBUG_MODE": "false",
+          "RTC_CONFIG": "",
+          "TURN_HOSTNAME": "turn.example.com",
+          "TURN_SECRET": "ci-test-secret-min-32-characters-long",
+          "TURN_EXTERNAL_IP": "",
+          "TURN_MIN_PORT": "40000",
+          "TURN_MAX_PORT": "45000",
+          "TURN_PORT": "3478",
+          "TURN_REALM": "localhost",
+          "ACME_EMAIL": "admin@example.com",
+          "PROXY_NETWORK": "traefik",
+          "PRIVATESUBNET": "254"
+        }
+
+  validate-scripts:
+    name: 🔍 Validate Shell Scripts
+    uses: bauer-group/automation-templates/.github/workflows/modules-validate-shellscript.yml@main
+    with:
+      scan-directory: '.'
+      severity: 'error'
+
+  # ============================================
+  # Release Job (only on main branch push)
+  # ============================================
+
+  release:
+    name: 📦 Create Semantic Release
+    needs: [validate-compose, validate-scripts]
+    if: |
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      needs.validate-compose.result == 'success' &&
+      needs.validate-scripts.result == 'success'
+    uses: bauer-group/automation-templates/.github/workflows/modules-semantic-release.yml@main
+    with:
+      target-branch: 'main'
+      dry-run: false
+      force-release: ${{ inputs.force-release || false }}
+    secrets: inherit
