@@ -1,0 +1,16 @@
+{
+  "iceServers": [
+    {
+      "urls": "stun:${TURN_HOSTNAME}:3478"
+    },
+    {
+      "urls": [
+        "turn:${TURN_HOSTNAME}:3478?transport=udp",
+        "turn:${TURN_HOSTNAME}:3478?transport=tcp",
+        "turns:${TURN_HOSTNAME}:5349?transport=tcp"
+      ],
+      "username": "pairdrop",
+      "credential": "${TURN_SECRET}"
+    }
+  ]
+}

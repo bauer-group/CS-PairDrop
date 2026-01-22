@@ -1,0 +1,221 @@
+# ═══════════════════════════════════════════════════════════
+# PairDrop Self-Hosting Stack - Production (Traefik)
+# BAUER GROUP | CS-PairDrop
+# ═══════════════════════════════════════════════════════════
+#
+# Use Case: Production mit HTTPS via Traefik
+# Profile: --profile turn aktiviert Coturn TURN Server mit eigenem TLS
+#
+# Deployment:
+#   OHNE TURN:  docker compose -f docker-compose.traefik.yml up -d
+#   MIT TURN:   docker compose -f docker-compose.traefik.yml --profile turn up -d
+#
+# ═══════════════════════════════════════════════════════════
+
+name: pairdrop-traefik
+
+services:
+  # ═══════════════════════════════════════════════════════════
+  # PairDrop - File Sharing Web App
+  # ═══════════════════════════════════════════════════════════
+  pairdrop:
+    image: lscr.io/linuxserver/pairdrop:latest
+    container_name: ${STACK_NAME:-pairdrop}_SERVER
+    restart: unless-stopped
+    # Resource Limits (optional)
+    # Docs: https://docs.docker.com/compose/compose-file/deploy/#resources
+    deploy:
+      resources:
+        limits:
+          cpus: '${PAIRDROP_CPU_LIMIT:-1.0}'
+          memory: ${PAIRDROP_MEM_LIMIT:-256M}
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TIME_ZONE:-Etc/UTC}
+      - WS_FALLBACK=${WS_FALLBACK:-true}
+      # RATE_LIMIT: 1 = ein Proxy (Traefik) vor PairDrop → 1000 req/5min pro IP
+      - RATE_LIMIT=${RATE_LIMIT:-1}
+      - DEBUG_MODE=${DEBUG_MODE:-false}
+      # RTC_CONFIG: Leer = Default STUN Server
+      # Mit TURN: In .env setzen: RTC_CONFIG=/rtc-config/rtc_config.json
+      - RTC_CONFIG=${RTC_CONFIG:-}
+    volumes:
+      - rtc-config:/rtc-config:ro
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    networks:
+      local:
+      proxy:
+    labels:
+      # Traefik Enable
+      - traefik.enable=true
+      - traefik.docker.network=${PROXY_NETWORK:-EDGEPROXY}
+
+      # HTTP Router (Redirect to HTTPS)
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-http.rule=Host(`${PAIRDROP_HOSTNAME}`)
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-http.entrypoints=http
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-http.middlewares=https-redirect@file
+
+      # HTTPS Router
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-https.rule=Host(`${PAIRDROP_HOSTNAME}`)
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-https.entrypoints=https
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-https.tls=true
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-https.tls.certresolver=letsencrypt
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-https.middlewares=${STACK_NAME:-pairdrop}-ratelimit,${STACK_NAME:-pairdrop}-inflightreq
+
+      # Service
+      - traefik.http.services.${STACK_NAME:-pairdrop}.loadbalancer.server.port=3000
+
+      # Rate Limiting (großzügig für Corporate NAT)
+      - traefik.http.middlewares.${STACK_NAME:-pairdrop}-ratelimit.ratelimit.average=300
+      - traefik.http.middlewares.${STACK_NAME:-pairdrop}-ratelimit.ratelimit.burst=100
+      - traefik.http.middlewares.${STACK_NAME:-pairdrop}-ratelimit.ratelimit.period=1m
+
+      # In-Flight Request Limiting (max gleichzeitige Connections pro IP)
+      - traefik.http.middlewares.${STACK_NAME:-pairdrop}-inflightreq.inflightreq.amount=500
+      - traefik.http.middlewares.${STACK_NAME:-pairdrop}-inflightreq.inflightreq.sourceCriterion.ipStrategy.depth=1
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ═══════════════════════════════════════════════════════════
+  # Config Generator - Erstellt RTC Config für TURN
+  # Aktiviert via: --profile turn
+  # ═══════════════════════════════════════════════════════════
+  config-generator:
+    profiles: [turn]
+    build:
+      context: ./src/config
+      dockerfile: Dockerfile
+    restart: "no"
+    container_name: ${STACK_NAME:-pairdrop}_CONFIG
+    environment:
+      - TURN_HOSTNAME=${TURN_HOSTNAME}
+      - TURN_SECRET=${TURN_SECRET}
+    volumes:
+      - rtc-config:/config
+
+  # ═══════════════════════════════════════════════════════════
+  # ACME Manager - Let's Encrypt für Coturn
+  # Aktiviert via: --profile turn
+  # ═══════════════════════════════════════════════════════════
+  acme-manager:
+    profiles: [turn]
+    build:
+      context: ./src/acme-manager
+      dockerfile: Dockerfile
+    container_name: ${STACK_NAME:-pairdrop}_ACME
+    restart: unless-stopped
+    environment:
+      - ACME_DOMAIN=${TURN_HOSTNAME}
+      - ACME_EMAIL=${ACME_EMAIL}
+      - COTURN_CONTAINER_NAME=${STACK_NAME:-pairdrop}_COTURN
+      - ACME_RENEWAL_DAYS=30
+      - ACME_CHECK_INTERVAL=12h
+    volumes:
+      - certs:/certs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      proxy:
+    labels:
+      # Traefik: Nur ACME Challenge durchleiten (Port 80)
+      - traefik.enable=true
+      - traefik.docker.network=${PROXY_NETWORK:-EDGEPROXY}
+      # ACME Challenge + TURN Info Page
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-acme.rule=Host(`${TURN_HOSTNAME}`)
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-acme.entrypoints=http
+      - traefik.http.services.${STACK_NAME:-pairdrop}-acme.loadbalancer.server.port=80
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ═══════════════════════════════════════════════════════════
+  # Coturn - TURN/STUN Server mit eigenem TLS
+  # Aktiviert via: --profile turn
+  # ═══════════════════════════════════════════════════════════
+  coturn:
+    profiles: [turn]
+    build:
+      context: ./src/coturn
+      dockerfile: Dockerfile
+    container_name: ${STACK_NAME:-pairdrop}_COTURN
+    restart: unless-stopped
+    # Resource Limits (optional - TURN kann bei Last ressourcenintensiv sein)
+    deploy:
+      resources:
+        limits:
+          cpus: '${COTURN_CPU_LIMIT:-1.0}'
+          memory: ${COTURN_MEM_LIMIT:-512M}
+    environment:
+      - TURN_REALM=${TURN_HOSTNAME}
+      - TURN_SECRET=${TURN_SECRET}
+      - TURN_EXTERNAL_IP=${TURN_EXTERNAL_IP}
+    volumes:
+      - certs:/certs:ro
+      - ./src/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    ports:
+      # STUN/TURN (nicht über Traefik!)
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+      # TURNS (TLS - von Coturn selbst terminiert!)
+      - "5349:5349/tcp"
+      - "5349:5349/udp"
+      # Media Relay Range
+      - "${TURN_MIN_PORT:-40000}-${TURN_MAX_PORT:-45000}:${TURN_MIN_PORT:-40000}-${TURN_MAX_PORT:-45000}/udp"
+    healthcheck:
+      test: ["CMD", "turnadmin", "-l", "-N", "localhost"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    networks:
+      local:
+    depends_on:
+      acme-manager:
+        condition: service_healthy
+      config-generator:
+        condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+### Volumes ###
+volumes:
+  certs:
+    driver: local
+    name: ${STACK_NAME:-pairdrop}-certs
+  rtc-config:
+    driver: local
+    name: ${STACK_NAME:-pairdrop}-rtc-config
+
+### Networks ###
+networks:
+  # Internal network for service communication (IPv4 + IPv6)
+  local:
+    driver: bridge
+    name: ${STACK_NAME:-pairdrop}
+    enable_ipv6: true
+    ipam:
+      config:
+      - subnet: 10.41.${PRIVATESUBNET:-254}.0/24
+        gateway: 10.41.${PRIVATESUBNET:-254}.1
+      - subnet: fdfd:10:41:${PRIVATESUBNET:-254}::/64
+        gateway: fdfd:10:41:${PRIVATESUBNET:-254}::1
+
+  # External Traefik proxy network
+  proxy:
+    name: ${PROXY_NETWORK:-EDGEPROXY}
+    external: true

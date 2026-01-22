@@ -1,0 +1,141 @@
+# ═══════════════════════════════════════════════════════════
+# PairDrop Self-Hosting Stack - Development
+# BAUER GROUP | CS-PairDrop
+# ═══════════════════════════════════════════════════════════
+#
+# Use Case: Lokale Entwicklung ohne TLS, direkter Port-Zugriff
+# Profile: --profile turn aktiviert Coturn TURN Server
+#
+# Deployment:
+#   OHNE TURN:  docker compose -f docker-compose.development.yml up -d
+#   MIT TURN:   docker compose -f docker-compose.development.yml --profile turn up -d
+#
+# ═══════════════════════════════════════════════════════════
+
+name: pairdrop-development
+
+services:
+  # ═══════════════════════════════════════════════════════════
+  # PairDrop - File Sharing Web App
+  # ═══════════════════════════════════════════════════════════
+  pairdrop:
+    image: lscr.io/linuxserver/pairdrop:latest
+    container_name: PAIRDROP_SERVER
+    restart: unless-stopped
+    # Resource Limits (optional)
+    # Docs: https://docs.docker.com/compose/compose-file/deploy/#resources
+    deploy:
+      resources:
+        limits:
+          cpus: '${PAIRDROP_CPU_LIMIT:-1.0}'
+          memory: ${PAIRDROP_MEM_LIMIT:-256M}
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TIME_ZONE:-Etc/UTC}
+      - WS_FALLBACK=${WS_FALLBACK:-true}
+      # RATE_LIMIT: false = deaktiviert (direkter Zugriff ohne Proxy)
+      - RATE_LIMIT=${RATE_LIMIT:-false}
+      - DEBUG_MODE=${DEBUG_MODE:-true}
+      # RTC_CONFIG: Leer = Default STUN Server
+      # Mit TURN: In .env setzen: RTC_CONFIG=/rtc-config/rtc_config.json
+      - RTC_CONFIG=${RTC_CONFIG:-}
+    volumes:
+      - rtc-config:/rtc-config:ro
+    ports:
+      - "${PAIRDROP_PORT:-3000}:3000/tcp"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      local:
+
+  # ═══════════════════════════════════════════════════════════
+  # Config Generator - Erstellt RTC Config für TURN
+  # Aktiviert via: --profile turn
+  # ═══════════════════════════════════════════════════════════
+  config-generator:
+    profiles: [turn]
+    build:
+      context: ./src/config
+      dockerfile: Dockerfile
+    restart: "no"
+    container_name: PAIRDROP_CONFIG
+    environment:
+      - TURN_HOSTNAME=${TURN_REALM:-localhost}
+      - TURN_SECRET=${TURN_SECRET:-development-secret-change-me}
+    volumes:
+      - rtc-config:/config
+
+  # ═══════════════════════════════════════════════════════════
+  # Coturn - TURN/STUN Server (ohne TLS für Development)
+  # Aktiviert via: --profile turn
+  # ═══════════════════════════════════════════════════════════
+  coturn:
+    profiles: [turn]
+    image: coturn/coturn:latest
+    container_name: PAIRDROP_COTURN
+    restart: unless-stopped
+    # Resource Limits (optional - TURN kann bei Last ressourcenintensiv sein)
+    deploy:
+      resources:
+        limits:
+          cpus: '${COTURN_CPU_LIMIT:-1.0}'
+          memory: ${COTURN_MEM_LIMIT:-512M}
+    command: >
+      -n
+      --realm=${TURN_REALM:-localhost}
+      --listening-port=3478
+      --listening-ip=0.0.0.0
+      --min-port=${TURN_MIN_PORT:-40000}
+      --max-port=${TURN_MAX_PORT:-40100}
+      --use-auth-secret
+      --static-auth-secret=${TURN_SECRET:-development-secret-change-me}
+      --fingerprint
+      --log-file=stdout
+      --no-cli
+      --no-software-attribute
+      --user-quota=20
+      --total-quota=500
+    ports:
+      - "${TURN_PORT:-3478}:3478/tcp"
+      - "${TURN_PORT:-3478}:3478/udp"
+      - "${TURN_MIN_PORT:-40000}-${TURN_MAX_PORT:-40100}:${TURN_MIN_PORT:-40000}-${TURN_MAX_PORT:-40100}/udp"
+    networks:
+      local:
+    depends_on:
+      config-generator:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "turnadmin", "-l", "-N", "localhost"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+### Volumes ###
+volumes:
+  rtc-config:
+    driver: local
+    name: pairdrop-rtc-config
+
+### Networks ###
+networks:
+  # Internal network for service communication (IPv4 + IPv6)
+  local:
+    driver: bridge
+    name: PAIRDROP
+    enable_ipv6: true
