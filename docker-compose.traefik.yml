@@ -60,12 +60,12 @@ services:
 
       # HTTP Router (Redirect to HTTPS)
       - traefik.http.routers.${STACK_NAME:-pairdrop}-http.rule=Host(`${PAIRDROP_HOSTNAME}`)
-      - traefik.http.routers.${STACK_NAME:-pairdrop}-http.entrypoints=http
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-http.entrypoints=web
       - traefik.http.routers.${STACK_NAME:-pairdrop}-http.middlewares=https-redirect@file
 
       # HTTPS Router
       - traefik.http.routers.${STACK_NAME:-pairdrop}-https.rule=Host(`${PAIRDROP_HOSTNAME}`)
-      - traefik.http.routers.${STACK_NAME:-pairdrop}-https.entrypoints=https
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-https.entrypoints=web-secure
       - traefik.http.routers.${STACK_NAME:-pairdrop}-https.tls=true
       - traefik.http.routers.${STACK_NAME:-pairdrop}-https.tls.certresolver=letsencrypt
       - traefik.http.routers.${STACK_NAME:-pairdrop}-https.middlewares=${STACK_NAME:-pairdrop}-ratelimit,${STACK_NAME:-pairdrop}-inflightreq
@@ -132,7 +132,7 @@ services:
       - traefik.docker.network=${PROXY_NETWORK:-EDGEPROXY}
       # ACME Challenge + TURN Info Page
       - traefik.http.routers.${STACK_NAME:-pairdrop}-acme.rule=Host(`${TURN_HOSTNAME}`)
-      - traefik.http.routers.${STACK_NAME:-pairdrop}-acme.entrypoints=http
+      - traefik.http.routers.${STACK_NAME:-pairdrop}-acme.entrypoints=web
       - traefik.http.services.${STACK_NAME:-pairdrop}-acme.loadbalancer.server.port=80
     logging:
       driver: json-file
