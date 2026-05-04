@@ -1,3 +1,9 @@
+## [0.1.1](https://github.com/bauer-group/CS-PairDrop/compare/v0.1.0...v0.1.1) (2026-05-04)
+
+### 🐛 Bug Fixes
+
+* **traefik:** aligned entrypoints with new EDGEPROXY v3 stack ([e7b6a61](https://github.com/bauer-group/CS-PairDrop/commit/e7b6a614d5f0ddc3cacaaf3adeace65ae8305777))
+
 ## [0.1.0](https://github.com/bauer-group/CS-PairDrop/compare/v0.0.0...v0.1.0) (2026-01-22)
 
 ### 🚀 Features
