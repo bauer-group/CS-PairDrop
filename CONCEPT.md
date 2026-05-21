@@ -126,10 +126,15 @@ CS-PairDrop/
 ├── .claude/
 │   └── CLAUDE.md                          # AI-Anweisungen (kopiert)
 ├── .github/
-│   ├── config/release/
-│   │   └── semantic-release.json          # Semantic Release Config
+│   ├── config/
+│   │   ├── release/
+│   │   │   └── semantic-release.json      # Semantic Release Config
+│   │   └── docker-base-image-monitor/
+│   │       └── base-images.json           # Watched upstream images (Digest-Drift)
 │   ├── workflows/
-│   │   ├── release.yml                    # CI/CD Pipeline
+│   │   ├── release.yml                    # CI/CD Pipeline + Release
+│   │   ├── check-base-images.yml          # Daily Base Image Digest Monitor
+│   │   ├── docker-maintenance.yml         # Auto-merge Dependabot Image PRs
 │   │   ├── teams-notifications.yml        # Teams Benachrichtigungen
 │   │   └── ai-issue-summary.yml           # AI Issue Summary
 │   ├── CODEOWNERS
@@ -1176,6 +1181,45 @@ Nutzt die bestehende Struktur aus dem Dashboard-Template:
 | `src/acme-manager/Dockerfile` | Hadolint |
 | `src/coturn/Dockerfile` | Hadolint |
 | `src/acme-manager/entrypoint.sh` | ShellCheck |
+
+### 7.3 Automatische Image-Wartung
+
+Zwei sich ergänzende Mechanismen sorgen dafür, dass dieses Repo automatisch auf
+Änderungen abhängiger Container-Images reagiert.
+
+**Dependabot (Tag-Bumps)** — `.github/dependabot.yml`
+
+Öffnet wöchentlich (So 06:30 UTC) PRs, wenn ein referenzierter Image-Tag auf eine
+neue Major/Minor-Variante springt (z. B. `alpine:3.20` → `alpine:3.21`). Watched
+ecosystems:
+
+| Ecosystem | Verzeichnis | Zweck |
+|-----------|-------------|-------|
+| `github-actions` | `/` | Action-Versionen in Workflows |
+| `docker-compose` | `/` | Upstream-Images in `docker-compose*.yml` |
+| `docker` | `/src/acme-manager` | `FROM alpine:…` |
+| `docker` | `/src/coturn` | `FROM coturn/coturn:…` |
+| `docker` | `/src/config` | `FROM alpine:…` |
+
+**Base-Image-Monitor (Digest-Drift)** — `.github/workflows/check-base-images.yml`
+
+Daily-Cron (10:00 UTC) prüft Digest-Drift auf den unten gelisteten Floating-Tags.
+Bei einer Änderung wird ein Commit auf `main` erzeugt und anschließend
+`release.yml` mit `force-release=true` getriggert, sodass ein neues Release
+geschnitten wird. Konfiguration:
+`.github/config/docker-base-image-monitor/base-images.json`
+
+| Name | Image | Tag | Verwendung |
+|------|-------|-----|------------|
+| `pairdrop` | `lscr.io/linuxserver/pairdrop` | `latest` | Alle `docker-compose*.yml` |
+| `coturn` | `coturn/coturn` | `latest` | `src/coturn/Dockerfile` + Development-Compose |
+| `alpine` | `alpine` | `latest` | `src/acme-manager/Dockerfile` + `src/config/Dockerfile` |
+
+**Auto-Merge** — `.github/workflows/docker-maintenance.yml`
+
+Dependabot-PRs auf `src/**/Dockerfile` oder `docker-compose*.yml` werden nach
+erfolgreicher Validierung automatisch approved und gemerged (Squash). Nach dem
+Merge feuert `release.yml` und cuttet ein neues Release.
 
 ---
 

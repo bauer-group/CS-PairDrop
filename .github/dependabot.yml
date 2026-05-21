@@ -1,12 +1,20 @@
 # =============================================================================
 # Dependabot Configuration
 # =============================================================================
-# Monitors GitHub Actions for updates on a weekly basis.
+# Watches:
+#   1. GitHub Actions versions (workflows pinned to @main pull module updates)
+#   2. Image references inside docker-compose*.yml files
+#   3. Base images referenced via FROM inside src/*/Dockerfile
+#
+# Image-tag updates that bump from a floating tag to a new floating tag
+# (e.g. alpine:3.20 → alpine:3.21) surface here as PRs. Pure digest
+# drift on existing tags (incl. ":latest") is handled by
+# check-base-images.yml (daily cron).
 # =============================================================================
 
 version: 2
 updates:
-  # GitHub Actions updates
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -20,3 +28,63 @@ updates:
       - "dependabot"
     commit-message:
       prefix: "chore(ci)"
+
+  # Docker Compose images (Dependabot >= 2024-09 supports docker-compose ecosystem)
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:30"
+      timezone: "Etc/UTC"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "dependabot"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # acme-manager base image (alpine:latest in src/acme-manager/Dockerfile)
+  - package-ecosystem: "docker"
+    directory: "/src/acme-manager"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:30"
+      timezone: "Etc/UTC"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "dependabot"
+    commit-message:
+      prefix: "chore(docker)"
+
+  # coturn base image (coturn/coturn:latest in src/coturn/Dockerfile)
+  - package-ecosystem: "docker"
+    directory: "/src/coturn"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:30"
+      timezone: "Etc/UTC"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "dependabot"
+    commit-message:
+      prefix: "chore(docker)"
+
+  # config-generator base image (alpine:latest in src/config/Dockerfile)
+  - package-ecosystem: "docker"
+    directory: "/src/config"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:30"
+      timezone: "Etc/UTC"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "dependabot"
+    commit-message:
+      prefix: "chore(docker)"

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/bauer-group/automation-templates/main/.github/config/docker-base-image-monitor/docker-base-images.schema.json",
+  "_description": "PairDrop stack — upstream images consumed via docker-compose and referenced as FROM in src/*/Dockerfile. The monitor tracks digests on floating tags (incl. :latest) and triggers a release when an upstream image moves.",
+  "images": [
+    {
+      "name": "pairdrop",
+      "image": "lscr.io/linuxserver/pairdrop",
+      "tag": "latest",
+      "variable": "PAIRDROP_LATEST_DIGEST",
+      "description": "LinuxServer.io PairDrop file-sharing web app (used in all docker-compose*.yml)"
+    },
+    {
+      "name": "coturn",
+      "image": "coturn/coturn",
+      "tag": "latest",
+      "variable": "COTURN_LATEST_DIGEST",
+      "description": "Coturn TURN/STUN server — base image for src/coturn/Dockerfile and used directly in docker-compose.development.yml"
+    },
+    {
+      "name": "alpine",
+      "image": "alpine",
+      "tag": "latest",
+      "variable": "ALPINE_LATEST_DIGEST",
+      "description": "Alpine Linux — base image for src/acme-manager/Dockerfile and src/config/Dockerfile"
+    }
+  ],
+  "settings": {
+    "commit-prefix": "chore(deps)",
+    "auto-create-variables": true
+  }
+}
