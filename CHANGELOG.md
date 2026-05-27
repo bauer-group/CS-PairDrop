@@ -1,3 +1,5 @@
+## [0.1.3](https://github.com/bauer-group/CS-PairDrop/compare/v0.1.2...v0.1.3) (2026-05-27)
+
 ## [0.1.2](https://github.com/bauer-group/CS-PairDrop/compare/v0.1.1...v0.1.2) (2026-05-22)
 
 ## [0.1.1](https://github.com/bauer-group/CS-PairDrop/compare/v0.1.0...v0.1.1) (2026-05-04)
