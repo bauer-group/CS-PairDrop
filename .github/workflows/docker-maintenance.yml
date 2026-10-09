@@ -27,4 +27,8 @@ jobs:
     with:
       merge-method: 'squash'
       auto-approve: true
+      # required-workflows is deliberately not set, so nothing is merged
+      # automatically: no PR workflow builds the images (release.yml only
+      # validates the compose files and shell scripts), so an update would
+      # be merged untested. Set it once a PR workflow builds src/*/Dockerfile.
     secrets: inherit
