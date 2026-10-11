@@ -4,6 +4,13 @@ All notable changes to this project are documented here. This file is maintained
 automatically by [semantic-release](https://github.com/semantic-release/semantic-release)
 on every release to `main`.
 
+## [0.1.21](https://github.com/bauer-group/CS-PairDrop/compare/v0.1.20...v0.1.21) (2026-10-11)
+
+### 🔧 Maintenance
+
+* **ci:** removed issue AI summary workflow ([c38c421](https://github.com/bauer-group/CS-PairDrop/commit/c38c4211bd00871a67470739c2825b985887c847)), references [bauer-group/automation-templates#105](https://github.com/bauer-group/automation-templates/issues/105)
+* **deps:** update base image pairdrop [skip ci] ([2e55938](https://github.com/bauer-group/CS-PairDrop/commit/2e559389daf5ca367ce61a02a131f8d7df4367f4))
+
 ## [0.1.20](https://github.com/bauer-group/CS-PairDrop/compare/v0.1.19...v0.1.20) (2026-09-27)
 
 ### 🔧 Maintenance
