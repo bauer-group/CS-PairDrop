@@ -4,6 +4,12 @@ All notable changes to this project are documented here. This file is maintained
 automatically by [semantic-release](https://github.com/semantic-release/semantic-release)
 on every release to `main`.
 
+## [0.1.26](https://github.com/bauer-group/CS-PairDrop/compare/v0.1.25...v0.1.26) (2026-11-06)
+
+### 🔧 Maintenance
+
+* **deps:** update base image alpine [skip ci] ([e3fde7d](https://github.com/bauer-group/CS-PairDrop/commit/e3fde7d9ef29a1929056e65987adc35a5c3bdd91))
+
 ## [0.1.25](https://github.com/bauer-group/CS-PairDrop/compare/v0.1.24...v0.1.25) (2026-11-01)
 
 ### 🔧 Maintenance
