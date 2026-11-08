@@ -1203,7 +1203,7 @@ ecosystems:
 
 **Base-Image-Monitor (Digest-Drift)** — `.github/workflows/check-base-images.yml`
 
-Daily-Cron (10:00 UTC) prüft Digest-Drift auf den unten gelisteten Floating-Tags.
+Daily-Cron (03:52 UTC) prüft Digest-Drift auf den unten gelisteten Floating-Tags.
 Bei einer Änderung wird ein Commit auf `main` erzeugt und anschließend
 `release.yml` mit `force-release=true` getriggert, sodass ein neues Release
 geschnitten wird. Konfiguration:
