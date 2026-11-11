@@ -12,16 +12,23 @@
     {
       "name": "coturn",
       "image": "coturn/coturn",
-      "tag": "latest",
+      "dockerfile": "src/coturn/Dockerfile",
       "variable": "COTURN_LATEST_DIGEST",
       "description": "Coturn TURN/STUN server — base image for src/coturn/Dockerfile and used directly in docker-compose.development.yml"
     },
     {
       "name": "alpine",
       "image": "alpine",
-      "tag": "latest",
+      "dockerfile": "src/acme-manager/Dockerfile",
       "variable": "ALPINE_LATEST_DIGEST",
-      "description": "Alpine Linux — base image for src/acme-manager/Dockerfile and src/config/Dockerfile"
+      "description": "Alpine Linux - base image for src/acme-manager/Dockerfile, tag from its FROM line."
+    },
+    {
+      "name": "alpine-config",
+      "image": "alpine",
+      "dockerfile": "src/config/Dockerfile",
+      "variable": "ALPINE_LATEST_CONFIG_DIGEST",
+      "description": "Alpine Linux - base image for src/config/Dockerfile, tag from its FROM line."
     }
   ],
   "settings": {
