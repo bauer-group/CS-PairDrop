@@ -4,6 +4,12 @@ All notable changes to this project are documented here. This file is maintained
 automatically by [semantic-release](https://github.com/semantic-release/semantic-release)
 on every release to `main`.
 
+## [0.1.30](https://github.com/bauer-group/CS-PairDrop/compare/v0.1.29...v0.1.30) (2026-11-20)
+
+### 🔧 Maintenance
+
+* **deps:** update base image coturn [skip ci] ([eb72f4b](https://github.com/bauer-group/CS-PairDrop/commit/eb72f4ba8ef50dab6b340b3c22bd7bd5ef2d69d5))
+
 ## [0.1.29](https://github.com/bauer-group/CS-PairDrop/compare/v0.1.28...v0.1.29) (2026-11-17)
 
 ### 🔧 Maintenance
